@@ -14,6 +14,8 @@
 ![Figure_2](https://github.com/MonikaK2409/SQLite/assets/142796975/a8dd042c-6eb6-42f4-84a3-5644b4eb0277)
 
 - Updation is currently taking alot of time, drawing statistics is also been a huge task.
+![image](https://github.com/MonikaK2409/SQLite/assets/142796975/bf9deeeb-e52f-43e7-8a27-361c5758e180)
+
 
 
 
