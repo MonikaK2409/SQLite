@@ -34,47 +34,34 @@ def delete_data(table_name, csv_file):
     start_time = time.time()
     conn = sqlite3.connect('flow.db')
     cursor = conn.cursor()
-
-    # Begin a transaction
-    cursor.execute('BEGIN TRANSACTION')
     
     try:
         df = pd.read_csv(csv_file, header=None)
         df.columns = ['version', 'source_ip', 'destination_ip', 'source_port', 'destination_port']
-
-        batch_size = 1000  # Set batch size
+        
         total_rows = len(df)
-        num_batches = (total_rows + batch_size - 1) // batch_size  # Calculate number of batches
-
-        for i in range(num_batches):
-            # Extract the current batch
-            batch_df = df[i * batch_size : (i + 1) * batch_size]
-
-            # Use a single DELETE statement with placeholders for batch processing
-            delete_query = f'''DELETE FROM {table_name} WHERE 
-                             (version, source_ip, destination_ip, source_port, destination_port) IN 
-                             ({','.join(['(?,?,?,?,?)']*len(batch_df))})'''
-
-            # Flatten dataframe values for placeholders in the query
-            values = [val for row in batch_df.values for val in row]
-
-            # Execute the delete query with batch processing
-            cursor.execute(delete_query, values)
-
-        # Commit the transaction
+        
+        for index, row in df.iterrows():
+            cursor.execute(f'''DELETE FROM {table_name} WHERE 
+                              version = ? AND 
+                              source_ip = ? AND 
+                              destination_ip = ? AND 
+                              source_port = ? AND 
+                              destination_port = ?''', 
+                           (row['version'], row['source_ip'], row['destination_ip'], 
+                            row['source_port'], row['destination_port']))
+        
         conn.commit()
         end_time = time.time()
         elapsed_time = end_time - start_time
         deletion_times.append(elapsed_time)
+        
         print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
     except Exception as e:
-        # Rollback transaction if an error occurs
         conn.rollback()
         print(f"Error occurred during deletion: {e}")
-        # Append a placeholder value to deletion_times to maintain dimensions
         deletion_times.append(None)
     finally:
-        # Close cursor and connection
         cursor.close()
         conn.close()
 
@@ -82,38 +69,34 @@ def update_data(table_name, csv_file):
     start_time = time.time()
     conn = sqlite3.connect('flow.db')
     cursor = conn.cursor()
-
+    
     try:
         df = pd.read_csv(csv_file, header=None)
         df.columns = ['version', 'source_ip', 'destination_ip', 'source_port', 'destination_port']
-
-        batch_size = 1000  # Set batch size
+        
         total_rows = len(df)
-        num_batches = (total_rows + batch_size - 1) // batch_size  # Calculate number of batches
-
+        
         # Begin a transaction
         cursor.execute('BEGIN TRANSACTION')
-
+        
         # Prepare the UPDATE query
-        update_query = f'''UPDATE {table_name} SET source_port = 100 WHERE 
-                           version = ? AND source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ?'''
-
-        # Execute the UPDATE query with batch processing
-        for i in range(num_batches):
-            # Extract the current batch
-            batch_df = df[i * batch_size : (i + 1) * batch_size]
-
-            # Prepare the values for the UPDATE query for the current batch
-            update_values = [tuple(row) for row in batch_df[['source_port', 'version', 'source_ip', 'destination_ip', 'version']].values]
-
-            # Execute the UPDATE query with executemany
-            cursor.executemany(update_query, update_values)
-
+        update_query = f'''UPDATE {table_name} SET source_port = ? WHERE 
+                           version = ? AND source_ip = ? AND destination_ip = ? AND 
+                           source_port = ? AND destination_port = ?'''
+        
+        # Execute the UPDATE query for each row in the DataFrame
+        for index, row in df.iterrows():
+            cursor.execute(update_query, (100, row['version'], row['source_ip'], 
+                                           row['destination_ip'], row['source_port'], 
+                                           row['destination_port']))
+        
         # Commit the transaction
         conn.commit()
+        
         end_time = time.time()
         elapsed_time = end_time - start_time
         update_times.append(elapsed_time)
+        
         print(f"Successfully updated {total_rows} tuples in {elapsed_time:.4f} seconds")
     except Exception as e:
         # Rollback transaction if an error occurs
@@ -124,7 +107,7 @@ def update_data(table_name, csv_file):
         # Close cursor and connection
         cursor.close()
         conn.close()
-   
+  
 def restore_netflow5(csv_file):
     conn = sqlite3.connect('flow.db')
     df = pd.read_csv(csv_file, header=None)
