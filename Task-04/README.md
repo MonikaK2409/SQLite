@@ -11,6 +11,4 @@
 ## Combined graph for all operations
 ![total](https://github.com/MonikaK2409/SQLite/assets/142796975/17373da2-957d-4375-af71-6283d3e692c0)
 
-
-
-
+- For Partial key search I tried to open sqlite shell and tried to search just using 2 attributes and all the tuples which satisfies the query is being displayed.
