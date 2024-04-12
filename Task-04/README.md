@@ -8,6 +8,9 @@
 ## CPU and memory Utilization metrix for different operations
 ![Utilizationmetrix(1)](https://github.com/MonikaK2409/SQLite/assets/142796975/52cb4325-9de7-489b-893e-4ae630c80a6f)
 
+## Combined graph for all operations
+![total](https://github.com/MonikaK2409/SQLite/assets/142796975/17373da2-957d-4375-af71-6283d3e692c0)
+
 
 
 
