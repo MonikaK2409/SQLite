@@ -3,190 +3,159 @@ import pandas as pd
 import time
 import matplotlib.pyplot as plt
 
-def create_table(table_name):
-    conn = sqlite3.connect('flow.db')
-    conn.execute(f'''CREATE TABLE IF NOT EXISTS {table_name} (
-                        source_ip TEXT,
-                        destination_ip TEXT,
-                        source_port INTEGER,
-                        destination_port INTEGER,
-                        version INTEGER,
-                        PRIMARY KEY (source_ip, destination_ip, source_port, destination_port,version)
-                    )''')
-    conn.close()
-
 def insert_data_batch(table_name, csv_file, batch_size=100):
-    start_time = time.time()
-    
-    conn = sqlite3.connect('flow.db')
-    cursor = conn.cursor()
-    
-    cursor.execute(f'DROP TABLE IF EXISTS {table_name}')  # Drop the table if it already exists
-    
-    # Create the table
-    cursor.execute(f'''CREATE TABLE {table_name} (
-                        source_ip TEXT,
-                        destination_ip TEXT,
-                        source_port INTEGER,
-                        destination_port INTEGER,
-                        version INTEGER
-                    )''')
-    
-    # Read data from CSV in batches and insert into the database
-    for chunk in pd.read_csv(csv_file, header=None, chunksize=batch_size):
-        chunk.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
-        chunk.to_sql(table_name, conn, if_exists='append', index=False)
-    
-    conn.commit()
-    conn.close()
-    
-    end_time = time.time()
-    elapsed_time = end_time - start_time
-    insertion_times.append(elapsed_time)
-    
-    print(f"Successfully inserted data from {csv_file} into {table_name} in {elapsed_time:.4f} seconds")
-
-def delete_data(table_name, csv_file):
-    start_time = time.time()
-    conn = sqlite3.connect('flow.db')
-    cursor = conn.cursor()
-
-    # Begin a transaction
-    cursor.execute('BEGIN TRANSACTION')
-    
     try:
-        df = pd.read_csv(csv_file, header=None)
-        df.columns = ['version', 'source_ip', 'destination_ip', 'source_port', 'destination_port']
+        conn = sqlite3.connect('flow.db')
+        cursor = conn.cursor()
 
-        batch_size = 1000  # Set batch size
-        total_rows = len(df)
-        num_batches = (total_rows + batch_size - 1) // batch_size  # Calculate number of batches
+        cursor.execute(f'DROP TABLE IF EXISTS {table_name}')  # Drop the table if it already exists
 
-        for i in range(num_batches):
-            # Extract the current batch
-            batch_df = df[i * batch_size : (i + 1) * batch_size]
+        # Create the table
+        cursor.execute(f'''CREATE TABLE {table_name} (
+                                source_ip TEXT,
+                                destination_ip TEXT,
+                                source_port INTEGER,
+                                destination_port INTEGER,
+                                version INTEGER,
+                                PRIMARY KEY(source_ip, destination_ip, source_port, destination_port, version)
+                            )''')
 
-            # Use a single DELETE statement with placeholders for batch processing
-            delete_query = f'''DELETE FROM {table_name} WHERE 
-                             (version, source_ip, destination_ip, source_port, destination_port) IN 
-                             ({','.join(['(?,?,?,?,?)']*len(batch_df))})'''
+        start_time = time.time()
 
-            # Flatten dataframe values for placeholders in the query
-            values = [val for row in batch_df.values for val in row]
+        # Read data from CSV in batches and insert into the database
+        for chunk in pd.read_csv(csv_file, header=None, chunksize=batch_size):
+            chunk.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
+            try:
+                chunk.to_sql(table_name, conn, if_exists='append', index=False)
+            except sqlite3.Error as e:
+                print(f"Error inserting data: {e}")
 
-            # Execute the delete query with batch processing
-            cursor.execute(delete_query, values)
-
-        # Commit the transaction
         conn.commit()
         end_time = time.time()
         elapsed_time = end_time - start_time
-        deletion_times.append(elapsed_time)
-        print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
+        insertion_times.append(elapsed_time)
+        print(f"Successfully inserted data from {csv_file} into {table_name} in {elapsed_time:.4f} seconds")
+
+    except sqlite3.Error as e:
+        print(f"SQLite error: {e}")
+    except pd.errors.ParserError as e:
+        print(f"CSV parsing error: {e}")
     except Exception as e:
-        # Rollback transaction if an error occurs
-        conn.rollback()
-        print(f"Error occurred during deletion: {e}")
-        # Append a placeholder value to deletion_times to maintain dimensions
-        deletion_times.append(None)
+        print(f"An error occurred: {e}")
+
     finally:
-        # Close cursor and connection
-        cursor.close()
-        conn.close()
+        if conn:
+            conn.close()
 
 def delete_data(table_name, csv_file, batch_size):
-    start_time = time.time()
-    conn = sqlite3.connect('flow.db')
-    cursor = conn.cursor()
-
-    # Begin a transaction
-    cursor.execute('BEGIN TRANSACTION')
-    
     try:
+        
+        conn = sqlite3.connect('flow.db')
+        cursor = conn.cursor()
+
+        # Begin a transaction
+        cursor.execute('BEGIN TRANSACTION')
+
         df = pd.read_csv(csv_file, header=None)
-        df.columns = ['version', 'source_ip', 'destination_ip', 'source_port', 'destination_port']
+        df.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port','version']
 
         total_rows = len(df)
         num_batches = (total_rows + batch_size - 1) // batch_size  # Calculate number of batches
-
+        
         for i in range(num_batches):
             # Extract the current batch
             batch_df = df[i * batch_size : (i + 1) * batch_size]
-
-            # Use a single DELETE statement with placeholders for batch processing
-            delete_query = f'''DELETE FROM {table_name} WHERE 
-                             (version, source_ip, destination_ip, source_port, destination_port) IN 
+            start_time = time.time()
+            try:
+                delete_query = f'''DELETE FROM {table_name} WHERE 
+                             ( source_ip, destination_ip, source_port, destination_port,version) IN 
                              ({','.join(['(?,?,?,?,?)']*len(batch_df))})'''
 
             # Flatten dataframe values for placeholders in the query
-            values = [val for row in batch_df.values for val in row]
+                values = [val for row in batch_df.values for val in row]
 
             # Execute the delete query with batch processing
-            cursor.execute(delete_query, values)
-
+                cursor.execute(delete_query, values)
+            except sqlite3.Error as e:
+                print(f"Error deleting data: {e}")
         # Commit the transaction
         conn.commit()
         end_time = time.time()
         elapsed_time = end_time - start_time
         deletion_times.append(elapsed_time)
         print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
+
+    except sqlite3.Error as e:
+        # Rollback transaction if an error occurs
+        conn.rollback()
+        print(f"SQLite error occurred during deletion: {e}")
+
+    except pd.errors.ParserError as e:
+        print(f"CSV parsing error: {e}")
+
     except Exception as e:
         # Rollback transaction if an error occurs
         conn.rollback()
         print(f"Error occurred during deletion: {e}")
-        # Append a placeholder value to deletion_times to maintain dimensions
-        deletion_times.append(None)
+
     finally:
         # Close cursor and connection
         cursor.close()
         conn.close()
 
 def update_data(table_name, csv_file):
-    start_time = time.time()
-    conn = sqlite3.connect('flow.db')
-    cursor = conn.cursor()
-
     try:
+        conn = sqlite3.connect('flow.db')
+        cursor = conn.cursor()
+
         df = pd.read_csv(csv_file, header=None)
-        df.columns = ['version', 'source_ip', 'destination_ip', 'source_port', 'destination_port']
+        df.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
 
-        batch_size = 1000  # Set batch size
+        batch_size = 1000
         total_rows = len(df)
-        num_batches = (total_rows + batch_size - 1) // batch_size  # Calculate number of batches
+        num_batches = (total_rows + batch_size - 1) // batch_size
 
-        # Begin a transaction
         cursor.execute('BEGIN TRANSACTION')
 
-        # Prepare the UPDATE query
-        update_query = f'''UPDATE {table_name} SET source_port = 100 WHERE 
-                           version = ? AND source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ?'''
+        try:
+            update_query = f'''UPDATE {table_name} SET source_port = 100 WHERE 
+                               source_ip = ? AND destination_ip = ? AND 
+                               source_port = ? AND destination_port = ? AND version = ? '''
+            start_time=time.time()
+            for i in range(num_batches):
+                batch_df = df[i * batch_size: (i + 1) * batch_size]
+                update_values = [tuple(row) for row in batch_df[['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']].values]
+                cursor.executemany(update_query, update_values)
 
-        # Execute the UPDATE query with batch processing
-        for i in range(num_batches):
-            # Extract the current batch
-            batch_df = df[i * batch_size : (i + 1) * batch_size]
+            num_updated = cursor.rowcount
+            end_time=time.time()
+            elapsed_time = end_time - start_time
+            update_times.append(elapsed_time)
+            conn.commit()
 
-            # Prepare the values for the UPDATE query for the current batch
-            update_values = [tuple(row) for row in batch_df[['source_port', 'version', 'source_ip', 'destination_ip', 'version']].values]
+            print(f"Successfully updated {num_updated} tuples in {elapsed_time:.4f} seconds")
 
-            # Execute the UPDATE query with executemany
-            cursor.executemany(update_query, update_values)
+        except sqlite3.Error as sqlite_error:
+            print(f"SQLite error occurred: {sqlite_error}")
+            conn.rollback()
+            return False, None
 
-        # Commit the transaction
-        conn.commit()
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        update_times.append(elapsed_time)
-        print(f"Successfully updated {total_rows} tuples in {elapsed_time:.4f} seconds")
+        except Exception as e:
+            print(f"Error occurred during update: {e}")
+            conn.rollback()
+            return False, None
+
+        finally:
+            cursor.close()
+            conn.close()
+
+    except sqlite3.Error as sqlite_error:
+        print(f"SQLite connection error: {sqlite_error}")
+        return False, None
+
     except Exception as e:
-        # Rollback transaction if an error occurs
-        conn.rollback()
-        print(f"Error occurred during update: {e}")
-        update_times.append(None)
-    finally:
-        # Close cursor and connection
-        cursor.close()
-        conn.close()
+        print(f"Unexpected error occurred: {e}")
+        return False, None
    
 def restore_netflow5(csv_file):
     conn = sqlite3.connect('flow.db')
@@ -205,17 +174,12 @@ while True:
     # Get user input
     choice = input("Enter your choice: ")
     if choice == "1":
-        create_table('Netflow1')
-        create_table('Netflow2')
-        create_table('Netflow3')
-        create_table('Netflow4')
-        create_table('Netflow5')
         insertion_times = []
         insert_data_batch('Netflow1', 'data_100_tuples.csv', batch_size=10)
-        insert_data_batch('Netflow1', 'data_1000_tuples.csv', batch_size=100)
-        insert_data_batch('Netflow1', 'data_10000_tuples.csv', batch_size=1000)
-        insert_data_batch('Netflow1', 'data_100000_tuples.csv', batch_size=10000)
-        insert_data_batch('Netflow1', 'data_1000000_tuples.csv', batch_size=100000)
+        insert_data_batch('Netflow2', 'data_1000_tuples.csv', batch_size=100)
+        insert_data_batch('Netflow3', 'data_10000_tuples.csv', batch_size=1000)
+        insert_data_batch('Netflow4', 'data_100000_tuples.csv', batch_size=10000)
+        insert_data_batch('Netflow5', 'data_1000000_tuples.csv', batch_size=100000)
         x = [100, 1000, 10000, 100000, 1000000]
         y = insertion_times
         plt.plot(x, y, marker='o', linestyle='-')
@@ -226,13 +190,13 @@ while True:
     elif choice == "2":
         deletion_times = []
         delete_data('Netflow5', 'data_100_delete.csv', batch_size=10)
-        restore_netflow5('data_100_delete.csv')
+        #restore_netflow5('data_100_delete.csv')
         delete_data('Netflow5', 'data_1000_delete.csv', batch_size=100)
-        restore_netflow5('data_1000_delete.csv')
+        #restore_netflow5('data_1000_delete.csv')
         delete_data('Netflow5', 'data_10000_delete.csv', batch_size=1000)
-        restore_netflow5('data_10000_delete.csv')
+        #restore_netflow5('data_10000_delete.csv')
         delete_data('Netflow5', 'data_100000_delete.csv', batch_size=10000)
-        restore_netflow5('data_100000_delete.csv')
+        #restore_netflow5('data_100000_delete.csv')
         x = [100, 1000, 10000, 100000]
         y = deletion_times
         plt.plot(x, y, marker='o', linestyle='-')
