@@ -18,10 +18,10 @@ def create_table(table_name):
 
 
 def insert_data(table_name, csv_file):
-    start_time = time.time()
     conn = sqlite3.connect('flow.db')
     df = pd.read_csv(csv_file, header=None)
     df.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
+    start_time = time.time()
     df.to_sql(table_name, conn, if_exists='replace', index=False)
     conn.close()
     end_time = time.time()
@@ -31,48 +31,53 @@ def insert_data(table_name, csv_file):
 
 
 def delete_data(table_name, csv_file):
-    start_time = time.time()
     conn = sqlite3.connect('flow.db')
     cursor = conn.cursor()
-    
+
     try:
         df = pd.read_csv(csv_file, header=None)
-        df.columns = ['version', 'source_ip', 'destination_ip', 'source_port', 'destination_port']
-        
-        total_rows = len(df)
-        
-        for index, row in df.iterrows():
-            cursor.execute(f'''DELETE FROM {table_name} WHERE 
-                              version = ? AND 
-                              source_ip = ? AND 
-                              destination_ip = ? AND 
-                              source_port = ? AND 
-                              destination_port = ?''', 
-                           (row['version'], row['source_ip'], row['destination_ip'], 
-                            row['source_port'], row['destination_port']))
-        
+        df.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
+
+        # Construct a list of tuples containing the values to delete
+        values_to_delete = [(row['source_ip'], row['destination_ip'], row['source_port'], 
+                             row['destination_port'], row['version']) for index, row in df.iterrows()]
+
+        start_time = time.time()
+
+        # Execute a single DELETE statement with multiple rows to delete
+        cursor.executemany(f'''DELETE FROM {table_name} WHERE 
+                               source_ip = ? AND 
+                               destination_ip = ? AND 
+                               source_port = ? AND 
+                               destination_port = ? AND 
+                               version = ?''', values_to_delete)
+
         conn.commit()
         end_time = time.time()
         elapsed_time = end_time - start_time
         deletion_times.append(elapsed_time)
-        
+
+        total_rows = len(df)
         print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
+
     except Exception as e:
         conn.rollback()
         print(f"Error occurred during deletion: {e}")
         deletion_times.append(None)
+
     finally:
         cursor.close()
         conn.close()
 
+
 def update_data(table_name, csv_file):
-    start_time = time.time()
+    
     conn = sqlite3.connect('flow.db')
     cursor = conn.cursor()
     
     try:
         df = pd.read_csv(csv_file, header=None)
-        df.columns = ['version', 'source_ip', 'destination_ip', 'source_port', 'destination_port']
+        df.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
         
         total_rows = len(df)
         
@@ -81,14 +86,14 @@ def update_data(table_name, csv_file):
         
         # Prepare the UPDATE query
         update_query = f'''UPDATE {table_name} SET source_port = ? WHERE 
-                           version = ? AND source_ip = ? AND destination_ip = ? AND 
-                           source_port = ? AND destination_port = ?'''
-        
+                            source_ip = ? AND destination_ip = ? AND 
+                           source_port = ? AND destination_port = ? AND version = ?'''
+        start_time = time.time()
         # Execute the UPDATE query for each row in the DataFrame
         for index, row in df.iterrows():
-            cursor.execute(update_query, (100, row['version'], row['source_ip'], 
+            cursor.execute(update_query, ( row['source_ip'], 
                                            row['destination_ip'], row['source_port'], 
-                                           row['destination_port']))
+                                           row['destination_port'], row['version']))
         
         # Commit the transaction
         conn.commit()
