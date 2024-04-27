@@ -64,15 +64,22 @@ def delete_data(table_name, csv_file, batch_size):
 
         for i in range(num_batches):
             # Extract the current batch
-            batch_df = df[i * batch_size : (i + 1) * batch_size]
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, total_rows)
+            batch_df = df.iloc[start_idx:end_idx]
 
-            # Iterate over the batch and delete each row individually
-            for _, row in batch_df.iterrows():
-                cursor.execute(f'DELETE FROM {table_name} WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?',
-                               (row['source_ip'], row['destination_ip'], row['source_port'], row['destination_port'], row['version']))
+            # Extract the data to be deleted from the batch
+            batch_data = [(row['source_ip'], row['destination_ip'], row['source_port'], row['destination_port'], row['version']) for _, row in batch_df.iterrows()]
+
+            # Create the SQL DELETE statement with placeholders for batch deletion
+            sql_delete = f'DELETE FROM {table_name} WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?'
+
+            # Execute the batch deletion operation
+            cursor.executemany(sql_delete, batch_data)
 
         # Commit the transaction
         conn.commit()
+
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
@@ -94,9 +101,9 @@ def delete_data(table_name, csv_file, batch_size):
         # Close cursor and connection
         cursor.close()
         conn.close()
-
+        
 def update_data(table_name, csv_file, batch_size):
-    try:
+   try:
         conn = sqlite3.connect('flow.db')
         cursor = conn.cursor()
 
@@ -113,23 +120,31 @@ def update_data(table_name, csv_file, batch_size):
 
         for i in range(num_batches):
             # Extract the current batch
-            batch_df = df[i * batch_size : (i + 1) * batch_size]
+            start_idx = i * batch_size
+            end_idx = min((i + 1) * batch_size, total_rows)
+            batch_df = df.iloc[start_idx:end_idx]
 
-            # Iterate over the batch and delete each row individually
-            for _, row in batch_df.iterrows():
-                cursor.execute(f'UPDATE {table_name} SET source_ip = 100 WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?',
-                               (row['source_ip'], row['destination_ip'], row['source_port'], row['destination_port'], row['version']))
+            # Extract the data to be deleted from the batch
+            batch_data = [(row['source_ip'], row['destination_ip'], row['source_port'], row['destination_port'], row['version']) for _, row in batch_df.iterrows()]
+
+            # Create the SQL UPDATE statement with placeholders for batch deletion
+            sql_delete = f'UPDATE {table_name} SET source_ip = 100 WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?'
+                              
+
+            # Execute the batch deletion operation
+            cursor.executemany(sql_delete, batch_data)
 
         # Commit the transaction
         conn.commit()
+
         end_time = time.time()
         elapsed_time = end_time - start_time
-        print(f"Successfully updated {total_rows} tuples in {elapsed_time:.4f} seconds")
+        print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
 
     except sqlite3.Error as e:
         # Rollback transaction if an error occurs
         conn.rollback()
-        print(f"SQLite error occurred during updation: {e}")
+        print(f"SQLite error occurred during deletion: {e}")
 
     except pd.errors.ParserError as e:
         print(f"CSV parsing error: {e}")
@@ -137,7 +152,7 @@ def update_data(table_name, csv_file, batch_size):
     except Exception as e:
         # Rollback transaction if an error occurs
         conn.rollback()
-        print(f"Error occurred during updation: {e}")
+        print(f"Error occurred during deletion: {e}")
 
     finally:
         # Close cursor and connection
