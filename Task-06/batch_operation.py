@@ -27,10 +27,11 @@ def insert_data_batch(table_name, csv_file, batch_size):
             chunk.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
             try:
                 chunk.to_sql(table_name, conn, if_exists='append', index=False)
+                conn.commit()
             except sqlite3.Error as e:
                 print(f"Error inserting data: {e}")
-
-        conn.commit()
+           
+        
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f"Successfully inserted data from {csv_file} into {table_name} in {elapsed_time:.4f} seconds")
@@ -76,9 +77,9 @@ def delete_data(table_name, csv_file, batch_size):
 
             # Execute the batch deletion operation
             cursor.executemany(sql_delete, batch_data)
-
+            conn.commit()
         # Commit the transaction
-        conn.commit()
+        
 
         end_time = time.time()
         elapsed_time = end_time - start_time
@@ -128,33 +129,33 @@ def update_data(table_name, csv_file, batch_size):
             batch_data = [(row['source_ip'], row['destination_ip'], row['source_port'], row['destination_port'], row['version']) for _, row in batch_df.iterrows()]
 
             # Create the SQL UPDATE statement with placeholders for batch deletion
-            sql_delete = f'UPDATE {table_name} SET source_ip = 100 WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?'
+            sql_delete = f'UPDATE {table_name} SET source_port = 100 WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?'
                               
 
             # Execute the batch deletion operation
             cursor.executemany(sql_delete, batch_data)
-
+            conn.commit()
         # Commit the transaction
-        conn.commit()
+        
 
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
 
-    except sqlite3.Error as e:
+   except sqlite3.Error as e:
         # Rollback transaction if an error occurs
         conn.rollback()
         print(f"SQLite error occurred during deletion: {e}")
 
-    except pd.errors.ParserError as e:
+   except pd.errors.ParserError as e:
         print(f"CSV parsing error: {e}")
 
-    except Exception as e:
+   except Exception as e:
         # Rollback transaction if an error occurs
         conn.rollback()
         print(f"Error occurred during deletion: {e}")
 
-    finally:
+   finally:
         # Close cursor and connection
         cursor.close()
         conn.close()
