@@ -87,7 +87,7 @@ def delete_data(table_name, csv_file, batch_size):
 
             # Execute the batch deletion operation
             start_time = time.time()
-            cursor.executemany(sql_delete, batch_data)
+            execute_batch(sql_delete, batch_data)
             conn.commit()
             end_time = time.time()
             elapsed_time = end_time - start_time
@@ -150,7 +150,7 @@ def update_data(table_name, csv_file, batch_size):
                               
             start_time = time.time()
             # Execute the batch deletion operation
-            cursor.executemany(sql_update, batch_data)
+            cursor.execute_batch(sql_update, batch_data)
             conn.commit()
             end_time = time.time()
             elapsed_time = end_time - start_time
