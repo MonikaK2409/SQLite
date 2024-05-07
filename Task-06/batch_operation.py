@@ -6,8 +6,14 @@ import matplotlib.pyplot as plt
 def insert_data_batch(table_name, csv_file, batch_size):
     try:
         conn = sqlite3.connect('flow.db')
-        cursor = conn.cursor()
 
+        # Set PRAGMA parameters for cache_size and temp_store
+        conn.execute(f'PRAGMA cache_size = {batch_size}')
+        conn.commit()
+        conn.execute(f'PRAGMA temp_store = MEMORY')
+        conn.commit()
+
+        cursor = conn.cursor()
         cursor.execute(f'DROP TABLE IF EXISTS {table_name}')  # Drop the table if it already exists
 
         # Create the table
@@ -20,21 +26,22 @@ def insert_data_batch(table_name, csv_file, batch_size):
                                 PRIMARY KEY(source_ip, destination_ip, source_port, destination_port, version)
                             )''')
 
-        start_time = time.time()
+        total_time = 0
 
         # Read data from CSV in batches and insert into the database
         for chunk in pd.read_csv(csv_file, header=None, chunksize=batch_size):
             chunk.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
             try:
+                start_time = time.time()
                 chunk.to_sql(table_name, conn, if_exists='append', index=False)
                 conn.commit()
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                total_time += elapsed_time
             except sqlite3.Error as e:
                 print(f"Error inserting data: {e}")
-           
-        
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        print(f"Successfully inserted data from {csv_file} into {table_name} in {elapsed_time:.4f} seconds")
+
+        print(f"Successfully inserted data from {csv_file} into {table_name} in {total_time:.4f} seconds")
 
     except sqlite3.Error as e:
         print(f"SQLite error: {e}")
@@ -42,7 +49,6 @@ def insert_data_batch(table_name, csv_file, batch_size):
         print(f"CSV parsing error: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
-
     finally:
         if conn:
             conn.close()
@@ -61,8 +67,12 @@ def delete_data(table_name, csv_file, batch_size):
         total_rows = len(df)
         num_batches = (total_rows + batch_size - 1) // batch_size  # Calculate number of batches
 
-        start_time = time.time()
-
+        total_time=0
+        
+        #setting pragma parameters for cache_size and temporary store
+        conn.execute(f'PRAGMA cache_size = {batch_size}')
+        conn.execute(f'PRAGMA temp_store = MEMORY')
+        
         for i in range(num_batches):
             # Extract the current batch
             start_idx = i * batch_size
@@ -76,14 +86,15 @@ def delete_data(table_name, csv_file, batch_size):
             sql_delete = f'DELETE FROM {table_name} WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?'
 
             # Execute the batch deletion operation
+            start_time = time.time()
             cursor.executemany(sql_delete, batch_data)
             conn.commit()
-        # Commit the transaction
-        
-
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            total_time += elapsed_time
+           
+       
+        print(f"Successfully deleted {total_rows} tuples in {total_time:.4f} seconds")
 
     except sqlite3.Error as e:
         # Rollback transaction if an error occurs
@@ -117,8 +128,14 @@ def update_data(table_name, csv_file, batch_size):
         total_rows = len(df)
         num_batches = (total_rows + batch_size - 1) // batch_size  # Calculate number of batches
 
-        start_time = time.time()
-
+        total_time=0
+        
+        #setting pragma parameters for cache_size and temporary store
+        conn.execute(f'PRAGMA cache_size = {batch_size}')
+        conn.commit()
+        conn.execute(f'PRAGMA temp_store = MEMORY')
+        conn.commit()
+        
         for i in range(num_batches):
             # Extract the current batch
             start_idx = i * batch_size
@@ -127,25 +144,25 @@ def update_data(table_name, csv_file, batch_size):
 
             # Extract the data to be deleted from the batch
             batch_data = [(row['source_ip'], row['destination_ip'], row['source_port'], row['destination_port'], row['version']) for _, row in batch_df.iterrows()]
-
+            
             # Create the SQL UPDATE statement with placeholders for batch deletion
-            sql_delete = f'UPDATE {table_name} SET source_port = 100 WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?'
+            sql_update = f'UPDATE {table_name} SET source_port = 100 WHERE source_ip = ? AND destination_ip = ? AND source_port = ? AND destination_port = ? AND version = ?'
                               
-
+            start_time = time.time()
             # Execute the batch deletion operation
-            cursor.executemany(sql_delete, batch_data)
+            cursor.executemany(sql_update, batch_data)
             conn.commit()
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            total_time += elapsed_time
         # Commit the transaction
         
-
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        print(f"Successfully deleted {total_rows} tuples in {elapsed_time:.4f} seconds")
+        print(f"Successfully updated {total_rows} tuples in {total_time:.4f} seconds")
 
    except sqlite3.Error as e:
         # Rollback transaction if an error occurs
         conn.rollback()
-        print(f"SQLite error occurred during deletion: {e}")
+        print(f"SQLite error occurred during updation: {e}")
 
    except pd.errors.ParserError as e:
         print(f"CSV parsing error: {e}")
@@ -153,7 +170,7 @@ def update_data(table_name, csv_file, batch_size):
    except Exception as e:
         # Rollback transaction if an error occurs
         conn.rollback()
-        print(f"Error occurred during deletion: {e}")
+        print(f"Error occurred during updation: {e}")
 
    finally:
         # Close cursor and connection
