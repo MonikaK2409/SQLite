@@ -12,7 +12,12 @@ def insert_data_batch(table_name, csv_file, batch_size):
         conn.commit()
         conn.execute(f'PRAGMA temp_store = MEMORY')
         conn.commit()
-
+        conn.execute(f'PRAGMA synchronous=NORMAL')
+        conn.commit()
+        conn.execute(f'PRAGMA journal_mode=WAL')
+        conn.commit()
+        conn.execute(f'PRAGMA page_size=8192')
+        conn.commit()
         cursor = conn.cursor()
         cursor.execute(f'DROP TABLE IF EXISTS {table_name}')  # Drop the table if it already exists
 
@@ -71,7 +76,15 @@ def delete_data(table_name, csv_file, batch_size):
         
         #setting pragma parameters for cache_size and temporary store
         conn.execute(f'PRAGMA cache_size = {batch_size}')
+        conn.commit()
         conn.execute(f'PRAGMA temp_store = MEMORY')
+        conn.commit()
+        conn.execute(f'PRAGMA synchronous=NORMAL')
+        conn.commit()
+        conn.execute(f'PRAGMA journal_mode=WAL')
+        conn.commit()
+        conn.execute(f'PRAGMA page_size=8192')
+        conn.commit()
         
         for i in range(num_batches):
             # Extract the current batch
@@ -134,6 +147,12 @@ def update_data(table_name, csv_file, batch_size):
         conn.execute(f'PRAGMA cache_size = {batch_size}')
         conn.commit()
         conn.execute(f'PRAGMA temp_store = MEMORY')
+        conn.commit()
+        conn.execute(f'PRAGMA synchronous=NORMAL')
+        conn.commit()
+        conn.execute(f'PRAGMA journal_mode=WAL')
+        conn.commit()
+        conn.execute(f'PRAGMA page_size=8192')
         conn.commit()
         
         for i in range(num_batches):

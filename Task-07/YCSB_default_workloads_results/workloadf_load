@@ -1,0 +1,31 @@
+Loading workload...
+Starting test.
+Adding shard node URL: jdbc:sqlite:/home/bmscecse/monika/test.db
+Using shards: 1,batchSize:-1, fetchSize: -1
+DBWrapper: report latency for each error is false and specific error codes to track for latency are: []
+[OVERALL], RunTime(ms), 134971
+[OVERALL], Throughput(ops/sec), 7.408998970149143
+[TOTAL_GCS_G1_Young_Generation], Count, 1
+[TOTAL_GC_TIME_G1_Young_Generation], Time(ms), 7
+[TOTAL_GC_TIME_%_G1_Young_Generation], Time(%), 0.0051862992791044
+[TOTAL_GCS_G1_Old_Generation], Count, 0
+[TOTAL_GC_TIME_G1_Old_Generation], Time(ms), 0
+[TOTAL_GC_TIME_%_G1_Old_Generation], Time(%), 0.0
+[TOTAL_GCs], Count, 1
+[TOTAL_GC_TIME], Time(ms), 7
+[TOTAL_GC_TIME_%], Time(%), 0.0051862992791044
+[CLEANUP], Operations, 1
+[CLEANUP], AverageLatency(us), 175.0
+[CLEANUP], MinLatency(us), 175
+[CLEANUP], MaxLatency(us), 175
+[CLEANUP], 95thPercentileLatency(us), 175
+[CLEANUP], 99thPercentileLatency(us), 175
+[INSERT], Operations, 1000
+[INSERT], AverageLatency(us), 134825.172
+[INSERT], MinLatency(us), 5
+[INSERT], MaxLatency(us), 134873087
+[INSERT], 95thPercentileLatency(us), 33
+[INSERT], 99thPercentileLatency(us), 81
+[INSERT], Return=OK, 1
+[INSERT], Return=BATCHED_OK, 999
+

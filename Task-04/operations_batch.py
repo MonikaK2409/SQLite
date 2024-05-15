@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import matplotlib.pyplot as plt
 
-def insert_data_batch(table_name, csv_file, batch_size=100):
+def insert_data_batch(table_name, csv_file):
     try:
         conn = sqlite3.connect('flow.db')
         cursor = conn.cursor()
@@ -20,21 +20,26 @@ def insert_data_batch(table_name, csv_file, batch_size=100):
                                 PRIMARY KEY(source_ip, destination_ip, source_port, destination_port, version)
                             )''')
 
-        start_time = time.time()
+        total_time=0
 
-        # Read data from CSV in batches and insert into the database
-        for chunk in pd.read_csv(csv_file, header=None, chunksize=batch_size):
-            chunk.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
-            try:
-                chunk.to_sql(table_name, conn, if_exists='append', index=False)
-            except sqlite3.Error as e:
-                print(f"Error inserting data: {e}")
+        df = pd.read_csv(csv_file, header=None)
+        df.columns = ['source_ip', 'destination_ip', 'source_port', 'destination_port', 'version']
 
-        conn.commit()
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        insertion_times.append(elapsed_time)
-        print(f"Successfully inserted data from {csv_file} into {table_name} in {elapsed_time:.4f} seconds")
+        for index, row in df.iterrows():
+          try:
+            start_time = time.time()
+            cursor.execute(f'''
+                INSERT INTO {table_name} (source_ip, destination_ip, source_port, destination_port, version)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (row['source_ip'], row['destination_ip'], row['source_port'], row['destination_port'], row['version']))
+            conn.commit()
+            time = time.time()
+            elapsed_time = insert_end_time - insert_start_time
+            total_time += insert_elapsed_time
+          except sqlite3.Error as e:
+            print(f"Error inserting data: {e}")
+
+        print(f"Successfully inserted data from {csv_file} into {table_name} in {total_time:.4f} seconds")
 
     except sqlite3.Error as e:
         print(f"SQLite error: {e}")

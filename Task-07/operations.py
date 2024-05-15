@@ -7,12 +7,19 @@ def insert_data(table_name,csv_file):
     try:
        conn = sqlite3.connect('flow.db')
        cursor = conn.cursor()
+       
+       # pragma options
        conn.execute(f'PRAGMA cache_size = 10000')
        conn.commit()
        conn.execute(f'PRAGMA temp_store = MEMORY')
        conn.commit()
        conn.execute(f'PRAGMA synchronous=NORMAL')
        conn.commit()
+       conn.execute(f'PRAGMA journal_mode=WAL')
+       conn.commit()
+       conn.execute(f'PRAGMA page_size=8192')
+       conn.commit()
+       
        cursor.execute(f'DROP TABLE IF EXISTS {table_name}')  # Drop the table if it already exists
 
         # Create the table
@@ -67,7 +74,10 @@ def update_data(table_name,csv_file):
        conn.commit()
        conn.execute(f'PRAGMA synchronous=NORMAL')
        conn.commit()
-       
+       conn.execute(f'PRAGMA journal_mode=WAL')
+       conn.commit()
+       conn.execute(f'PRAGMA page_size=8192')
+       conn.commit()
         
        total_time=0
        df = pd.read_csv(csv_file, header=None)
@@ -109,7 +119,10 @@ def delete_data(table_name,csv_file):
        conn.commit()
        conn.execute(f'PRAGMA synchronous=NORMAL')
        conn.commit()
-       
+       conn.execute(f'PRAGMA journal_mode=WAL')
+       conn.commit()
+       conn.execute(f'PRAGMA page_size=8192')
+       conn.commit()
         
        total_time=0
        df = pd.read_csv(csv_file, header=None)
@@ -156,19 +169,19 @@ while True:
         insert_data('Netflow1', 'data_100_tuples.csv')
         insert_data('Netflow2', 'data_1000_tuples.csv')
         insert_data('Netflow3', 'data_10000_tuples.csv')
-        #insert_data('Netflow4', 'data_100000_tuples.csv')
+        
     elif choice == "2":
         deletion_times = []
         delete_data('Netflow1', 'data_100_tuples.csv')
         delete_data('Netflow2', 'data_1000_tuples.csv')
         delete_data('Netflow3', 'data_10000_tuples.csv')   
-        #delete_data('Netflow4', 'data_100000_tuples.csv')   
+          
     elif choice == "3":
         update_times = []
         update_data('Netflow1', 'data_100_tuples.csv')
         update_data('Netflow2', 'data_1000_tuples.csv')
         update_data('Netflow3', 'data_10000_tuples.csv')
-        #update_data('Netflow4', 'data_100000_tuples.csv')
+        
     elif choice.lower() == "exit":
         break
     else:
